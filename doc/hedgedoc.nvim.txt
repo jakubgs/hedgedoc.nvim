@@ -1,0 +1,132 @@
+*hedgedoc.nvim.txt*  Edit HedgeDoc notes from Neovim
+
+Author: hedgedoc.nvim contributors
+
+==============================================================================
+CONTENTS                                                     *hedgedoc-contents*
+
+1. Introduction.............................................|hedgedoc-intro|
+2. Requirements.............................................|hedgedoc-requirements|
+3. Installation.............................................|hedgedoc-install|
+4. Setup....................................................|hedgedoc-setup|
+5. Commands.................................................|hedgedoc-commands|
+6. Behavior.................................................|hedgedoc-behavior|
+7. Example..................................................|hedgedoc-example|
+
+==============================================================================
+1. Introduction                                                *hedgedoc-intro*
+
+hedgedoc.nvim lets you open and edit HedgeDoc notes in Neovim.
+
+- Open by note id or URL.
+- Save remote note on |:write|.
+- Poll remote revision in background.
+- If remote changes are detected:
+  - auto-reload if local buffer is unchanged,
+  - set buffer read-only and warn if local has unsaved edits.
+
+==============================================================================
+2. Requirements                                        *hedgedoc-requirements*
+
+- Neovim 0.10+ (uses |vim.system()| and |vim.json|)
+- `curl` executable in your PATH
+- HedgeDoc instance with API access
+
+==============================================================================
+3. Installation                                              *hedgedoc-install*
+
+Any plugin manager works as long as the plugin root is on 'runtimepath'.
+
+Native package example:
+
+  ~/.local/share/nvim/site/pack/local/start/hedgedoc.nvim
+
+Or local path in |init.vim|:
+
+  >
+    set rtp^=~/.config/nvim/bundle/hedgedoc.nvim
+  <
+
+==============================================================================
+4. Setup                                                        *hedgedoc-setup*
+
+Call `require("hedgedoc").setup({...})` once during startup.
+
+Default options: >lua
+  {
+    base_url = "",
+    token = nil,
+    headers = {},
+    timeout_ms = 10000,
+    poll_interval_ms = 10000,
+    notify = true,
+    filetype = "markdown",
+    endpoints = {
+      get = "/api/notes/%s",
+      put = "/api/notes/%s",
+      revision = "/api/notes/%s/revision",
+    },
+  }
+<
+
+Notes:
+
+- `base_url` is required.
+- If `token` is set, plugin sends:
+  Authorization: Bearer <token>
+- You can provide custom `headers`, including Cookie-based auth.
+
+==============================================================================
+5. Commands                                                  *hedgedoc-commands*
+
+                                                        *:HedgeDocOpen*
+:[range]HedgeDocOpen {note-id-or-url}
+    Open a HedgeDoc note in current window.
+
+                                                        *:HedgeDocSave*
+:[range]HedgeDocSave
+    Save current HedgeDoc buffer to server.
+
+Writing a HedgeDoc buffer with |:write| also saves remotely.
+
+==============================================================================
+6. Behavior                                                  *hedgedoc-behavior*
+
+Buffer names use:
+
+  hedgedoc://{id}.md
+
+Autocommands:
+
+- `BufWriteCmd` on `hedgedoc://*` calls remote save.
+- `BufDelete`/`BufWipeout` stop background polling.
+
+Conflict handling:
+
+- Remote revision > local revision and local unchanged:
+  buffer is reloaded from server to latest revision.
+- Remote revision > local revision and local modified:
+  buffer is set `readonly` and `nomodifiable`, with warning notification.
+
+==============================================================================
+7. Example                                                    *hedgedoc-example*
+
+In |init.vim|: >vim
+  set rtp^=~/.config/nvim/bundle/hedgedoc.nvim
+
+  lua << EOF
+  require("hedgedoc").setup({
+    base_url = "https://your-hedgedoc.example.com",
+    token = "YOUR_TOKEN",
+    poll_interval_ms = 2000,
+  })
+  EOF
+<
+
+In Neovim:
+
+  :HedgeDocOpen abc123
+  :write
+
+==============================================================================
+vim:tw=78:ts=8:noet:ft=help:norl:
