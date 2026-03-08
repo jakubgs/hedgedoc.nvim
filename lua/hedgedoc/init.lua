@@ -56,7 +56,7 @@ local function parse_body_and_status(raw)
   return body, tonumber(code) or 0
 end
 
-local function run_curl(method, path, body)
+local function build_curl_command(method, path, body)
   local url = make_url(path)
   local args = {
     "curl",
@@ -87,11 +87,10 @@ local function run_curl(method, path, body)
 
   table.insert(args, url)
 
-  local result = vim.system(args, {
-    text = true,
-    stdin = body,
-  }):wait()
+  return args, url, body
+end
 
+local function parse_curl_result(result, url)
   if result.code ~= 0 then
     return nil, string.format("request failed (%s): %s", url, (result.stderr or "")):gsub("\n+$", "")
   end
@@ -104,54 +103,27 @@ local function run_curl(method, path, body)
   return body_text, nil
 end
 
+local function run_curl(method, path, body)
+  local args, url, stdin = build_curl_command(method, path, body)
+
+  local result = vim.system(args, {
+    text = true,
+    stdin = stdin,
+  }):wait()
+
+  return parse_curl_result(result, url)
+end
+
 local function run_curl_async(method, path, body, cb)
-  local url = make_url(path)
-  local args = {
-    "curl",
-    "-sS",
-    "-X",
-    method,
-    "--connect-timeout",
-    tostring(math.max(1, math.floor(state.opts.timeout_ms / 1000))),
-    "--max-time",
-    tostring(math.max(1, math.floor(state.opts.timeout_ms / 1000))),
-    "-w",
-    "\n%{http_code}",
-  }
-
-  local headers = vim.deepcopy(state.opts.headers or {})
-  if state.opts.token and state.opts.token ~= "" and not headers.Authorization then
-    headers.Authorization = "Bearer " .. state.opts.token
-  end
-
-  if body then
-    headers["Content-Type"] = headers["Content-Type"] or "application/json"
-  end
-
-  for k, v in pairs(headers) do
-    table.insert(args, "-H")
-    table.insert(args, string.format("%s: %s", k, v))
-  end
-
-  table.insert(args, url)
+  local args, url, stdin = build_curl_command(method, path, body)
 
   vim.system(args, {
     text = true,
-    stdin = body,
+    stdin = stdin,
   }, function(result)
     vim.schedule(function()
-      if result.code ~= 0 then
-        cb(nil, string.format("request failed (%s): %s", url, (result.stderr or "")):gsub("\n+$", ""))
-        return
-      end
-
-      local body_text, status = parse_body_and_status(result.stdout)
-      if status < 200 or status >= 300 then
-        cb(nil, string.format("HTTP %d from %s: %s", status, url, body_text))
-        return
-      end
-
-      cb(body_text, nil)
+      local body_text, err = parse_curl_result(result, url)
+      cb(body_text, err)
     end)
   end)
 end
