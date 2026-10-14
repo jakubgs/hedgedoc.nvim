@@ -11,37 +11,21 @@ Features:
   - auto-reload if your local buffer is unchanged,
   - switch to read-only and warn if you have unsaved local edits.
 
-## Install (local path)
+## Installation (lazy.nvim)
 
-This repo can live anywhere, but its root must be on Neovim `runtimepath`.
+Add this plugin spec to your lazy.nvim plugin configuration. lazy.nvim calls
+`require("hedgedoc").setup(opts)` automatically:
 
-Example using a `bundle` directory:
-
-1. Place or symlink this repo to:
-
-   `~/.config/nvim/bundle/hedgedoc.nvim`
-
-2. Add the path to `runtimepath` in `init.vim`:
-
-```vim
-set rtp^=~/.config/nvim/bundle/hedgedoc.nvim
+```lua
+return {
+  "jakubgs/hedgedoc.nvim",
+  opts = {
+    base_url = "https://your-hedgedoc.example.com",
+    token = "YOUR_TOKEN", -- optional, depending on your auth setup
+    poll_interval_ms = 2000, -- optional, useful while testing
+  },
+}
 ```
-
-## Configure (`init.vim`)
-
-```vim
-set rtp^=~/.config/nvim/bundle/hedgedoc.nvim
-
-lua << EOF
-require("hedgedoc").setup({
-  base_url = "https://your-hedgedoc.example.com",
-  token = "YOUR_TOKEN",      -- optional, depending on your auth setup
-  poll_interval_ms = 2000,    -- optional, useful while testing
-})
-EOF
-```
-
-Reload Neovim (or `:source $MYVIMRC`) after adding this.
 
 ## Getting an auth token
 
@@ -61,15 +45,16 @@ Common cases:
    - Use `headers = { Cookie = "<your session cookie>" }` instead of `token`.
    - Example:
 
-```vim
-lua << EOF
-require("hedgedoc").setup({
-  base_url = "https://your-hedgedoc.example.com",
-  headers = {
-    Cookie = "connect.sid=...",
+```lua
+return {
+  "jakubgs/hedgedoc.nvim",
+  opts = {
+    base_url = "https://your-hedgedoc.example.com",
+    headers = {
+      Cookie = "connect.sid=...",
+    },
   },
-})
-EOF
+}
 ```
 
 Notes:
@@ -82,20 +67,6 @@ Notes:
 
 - Open note: `:HedgeDocOpen <note-id-or-url>`
 - Save note: `:w` (or `:HedgeDocSave`)
-
-## How module loading works
-
-Neovim resolves `require("hedgedoc")` from runtimepath Lua directories.
-With this file layout:
-
-- `lua/hedgedoc/init.lua`
-
-`require("hedgedoc")` works as long as the plugin root is in `runtimepath`.
-
-Verify:
-
-- `:set rtp?` includes your plugin path
-- `:lua print(require("hedgedoc"))` loads without errors
 
 ## Manual test flow
 
